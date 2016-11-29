@@ -1,0 +1,317 @@
+---
+title: "Dane kwestionariusze"
+author: "Gevorg Khangeldyan"
+date: "28 listopada 2016"
+output:
+  pdf_document:
+    number_section: yes
+    toc: yes
+  word_document:
+    toc: yes
+---
+
+
+# Przypadek z danymi kwestionariuszowymi
+
+Czêœæ ta jest przyk³adem sytuacji, która czêsto siê zdarza w analityce danych. Mamy pewien zbiór danych,  w których s¹ zawarte istotne informacje, jednak forma przedstawionych informacji mocno utrudnia jakiekolwiek analizy: dane s¹ niepe³ne, kolumny maj¹ ma³o informacyjne nazwy, wa¿ne informacje s¹ dostêpnie dopiero po operacji na kilku kolumnach, sposób kodowana odpowiedzi jest ró¿ny i tak dalej. Przyk³adem takich danych s¹  dane zebrane przeze mnie na potrzeby pracy magisterskiej. Dlatego jako studium przypadku wykorzystam te dane . Praca na takich danych jest mocn¹ strona programy R, poniewa¿ istnieje spora iloœæ bibliotek ogromnie u³atwiaj¹cych operacje na takich danych. Wielkim minusem wykorzystania tych danych jest z³o¿ona tematyka pracy magisterskiej i dla osoby nie znaj¹cej tematu pracy pod¹¿anie za treœci¹ tego przypadku mo¿e byæ niekomfortowe. Dlatego postaram siê maksymalnie ograniczyæ kwestie zwi¹zane z tematem pracy do minimum i skupie siê g³ównie na mo¿liwoœciach R.
+
+## Czyszczenie danych
+
+G³ównymi bibliotekami do czyszczenia danych w R s¹  dplyr, stringr i tidyr. Dlatego na pocz¹tek za³adujemy je do programu. 
+```{r message=FALSE, warning=FALSE}
+library(plyr)
+library(dplyr)
+library(stringr)
+library(tidyr)
+library(magrittr)
+```
+
+```{r, echo=FALSE, message=FALSE}
+getwd()
+setwd("D:/Analityka/Dane")
+source("survey_326984_R_syntax_file.R", encoding = "UTF-8")
+```
+
+
+```{r}
+dim(data)
+names(data)
+```
+
+
+
+```{r, echo=FALSE}
+data[1:10, 1:4]
+```
+
+Dane zawieraj¹ 140 obserwacji oraz 124 zmiennych. Ju¿  na pierwszy rzut oka widaæ, ¿e  kilka zmiennych jest niepotrzebnych i nale¿y je usun¹æ.  S¹ to zmienne token, submidate, startlanguage.
+
+```{r}
+data <- data %>% 
+  select(-token, -submitdate, -startlanguage)
+```
+
+Nastêpnie sprawdzamy czy s¹ niepe³ne obserwacje. Okazuje siê ¿e tak, wiêc je te¿ usuwamy.
+
+
+```{r}
+any(!complete.cases(data))
+data <- data[complete.cases(data),]
+```
+
+Pierwsza faza czyszczenia danych za nami. By zrozumieæ nastêpny etap trzeba odrobinê przybli¿yæ temat pracy magisterskiej. Bada ona g³ównie sk³onnoœæ do ryzyka w ró¿nych dziedzinach ¿ycia: finansowej, spo³ecznej, zdrowotnej itp. W sumie jest 6 dziedzin. Dodatkowo bada ona nie tylko sk³onnoœæ do ryzyka (pytania od `C1_1` do `C2_30`), ale te¿ postrzeganie potencjalnych korzyœci z ryzyka (tutaj pytania od `K1_1` do `K2_30`), potencjalne straty w sytuacji ryzykownej (od `S1_1` do `S2_30`). Ka¿de z pytañ nale¿¹ od odpowiedniej domeny. By zmierzyæ sk³onnoœæ do ryzyka w danej domenie nale¿y w jakiœ sposób po³¹czyæ ze sob¹ dane z odpowiednich kolumn, np. sumuj¹c lub wyci¹gaj¹c œredni¹. Przyk³adowo w pytania numer, 6, 9, 10, 16, 29, 30 mierz¹ ryzyko w domenie etycznej. Pytanie `C1_6` mierzy sk³onnoœæ do ryzyka w domenie etycznej a pytanie `K1_10` wielkoœæ postrzeganych korzyœci z sytuacji ryzykownej w domenie etyczne a `S2_16` wielkoœæ postrzeganych straty z sytuacji ryzykownej. Cyfry 1 oraz 2 przy literach S,K i C informuj¹ o stronie na której znalaz³o siê pytanie. Umieszczenie wszystkich 30 pytañ na jednej tworzy³o nieprzyjemne wra¿enie nat³oku pytañ i mog³y zniechêciæ respondenta do wype³nienia  ankiety. Dlatego podzielono pytania z ka¿dej czêœci na dwie strony po 15 dla ka¿dej. Oczywiœcie mo¿na wykonaæ ¿mudn¹ pracê sumuj¹c wszystkie 90 kolumn rêcznie za pomoc¹  arkusza kalkulacyjnego, przesuwaj¹c suwakiem w jedna i druga stronê, jednoczeœnie patrz¹c na  na plik informuj¹cy  jakie pytanie nale¿y do której domeny (wiem o czym piszê, bo tak zrobi³em) Mo¿na równie¿ u³atwiæ sobie ¿ycie i wykorzystaæ w tym celu program R.
+
+Taki sam zabieg zastosowano w przypadku pytañ `PP1_1` do `PP2_30`, które mierz¹ poziom ukierunkowañ promocyjnego i prewencyjnego. Jednak nie zostan¹ tutaj dok³adniej opisane, poniewa¿ nie s¹ one szczególnie potrzebne w tym przypadku
+
+
+```{r}
+etyczna <- c(6, 9, 10, 16, 29, 30)
+finasowa <- c(12, 4, 18)
+hazardowa <- c(3, 14, 8)
+zdrowotna <- c(5, 15, 17, 20, 23, 26)
+rekreacyjna <-  c(2, 11, 13, 19, 24, 25)
+spoleczna <- c(1, 7, 21, 22, 27, 28)
+```
+
+```{r echo=FALSE}
+wszystkie <- 1:27
+promocja <- c(1, 3, 5, 6, 14, 18, 19, 23, 27)
+motywacja <- c(8, 10, 13, 15, 20, 22, 26)
+prewencja <- setdiff(wszystkie, promocja)
+prewencja <- setdiff(prewencja, motywacja)
+```
+
+
+Na pocz¹tek napiszemy funkcjê, która stworzy odpowiednie nazwy kolumn i przypisze je do w³aœciwej listy. Stworzymy pusta listê `lista_domen`, w której bêdziemy magazynowali odpowiednie dane. Nastêpnie napiszemy funkcje, która zajmie siê magazynowaniem danych. 
+
+Rzuæmy okiem na pocz¹tek funkcji. `S1 <- str_c("S1_", x[x <= 15]) S2 <- str_c("S2_", x[x > 15]) lista_domen[[paste(deparse(substitute(x))`, "_Straty", sep = "")]] <<- c(S1,S2)
+Pierwsza linia S1 <- £¹czy ze sob¹ przez funkcje `str_c` pierwszy cz³on, czyli `S1_` z obserwacjami mniejszymi b¹dŸ równymi ni¿ 15. Druga linia ³¹czy cz³on `S2_` z obserwacjami od 15 do 30. 3 Linia jest bardzo istotna. Tworzy ona subliste, której nazwa sk³ada siê z po³¹czenia nazwy argumentu funkcji z cz³onem `_Straty`. Przyk³adowo, je¿eli argumentem funkcji bêdzie wektor `etyczna` to na pocz¹tku stworzy wektor z S1 z z wartoœciami `S1_6`, `S1_9`, `S1_10`, nastêpnie wektor S2 z wartoœciami `S2_16`, `S2_29`, `S2_30`. Na koñcu tworzy ona subliste z `etyczna_Straty` (nazwa argumentu i cz³on _Straty) i w której umieszcza oba wektory S1 i S2. Taki sam proces odbywa siê w nastêpnych etapach funkcji gdzie tworzy subliste korzy ci i czêstoœci.
+
+
+```{r}
+lista_domen <- list()
+
+dosp_fun <- function(x) {
+  S1 <- str_c("S1_", x[x <= 15])
+  S2 <- str_c("S2_", x[x > 15])
+  lista_domen[[paste(deparse(substitute(x)), "_Straty", sep = "")]] <<- c(S1,S2)
+  K1 <- str_c("K1_", x[x <= 15])
+  K2 <- str_c("K2_", x[x > 15])
+  lista_domen[[paste(deparse(substitute(x)), "_Korzysci", sep = "")]] <<- c(K1,K2)
+  C1 <- str_c("C1_", x[x <= 15])
+  C2 <- str_c("C2_", x[x > 15])
+  lista_domen[[paste(deparse(substitute(x)), "_Czestosc", sep = "")]] <<- c(C1,C2)
+}
+```
+
+```{r echo=FALSE}
+dosp_fun(etyczna)
+dosp_fun(spoleczna)
+dosp_fun(hazardowa)
+dosp_fun(finasowa)
+dosp_fun(zdrowotna)
+dosp_fun(rekreacyjna)
+
+
+lista_domen$hazardowa_Straty <- lista_domen$hazardowa_Straty[1:3]
+lista_domen$hazardowa_Korzysci <- lista_domen$hazardowa_Korzysci[1:3]
+lista_domen$hazardowa_Czestosc <- lista_domen$hazardowa_Czestosc[1:3]
+```
+
+```{r echo=FALSE}
+
+PP_fun <- function(x) {
+  P1 <- str_c("PP1_", x[x <= 15])
+  P2 <- str_c("PP2_", x[x > 15])
+  lista_domen[[deparse(substitute(x))]] <<- c(P1,P2)
+}
+
+PP_fun(promocja)  
+PP_fun(prewencja)
+```
+
+
+Po wykorzystaniu funkcji otrzymujemy listê z wektorami, których nazwami s¹ domeny a jej sk³adowymi odpowiednie pytania tych¿e domen.
+
+```{r}
+lista_domen
+```
+
+Teraz mo¿emy stworzyæ pêtle, któr¹ stworzy nowe kolumny, w której bêd¹ zawarte miary ryzyka w odpowiednich domenach. Jako miara zosta³a wybrana tutaj œrednia.
+
+```{r}
+dane <- sapply(data, as.numeric)
+dane <- as.data.frame(dane)
+
+for (i in 1:length(lista_domen)) {
+  name <- attr(lista_domen[i], "names")
+  dane <<- dane %>% mutate(newCOLname =  rowMeans(.[lista_domen[[i]]]))  
+  colnames(dane)[colnames(dane)=="newCOLname"] <- name
+}
+```
+
+PrzeœledŸmy, co siê sta³o w powy¿ej pêtli. W pierwszej iteracji pêtla bierze pierwsz¹ subliste z `lista_domen`, czyli `etyczna_Straty` i przypisuje jej nazwê do obiektu `name`. Nastêpnie tworzy now¹ kolumnê o nazwie `newColname`, w której znajduje siê œrednia wyci¹gniêta z kolumn, których nazwy s¹ wymienione w subliœcie. Na sam koniec funkcja przypasuje now¹ nazwê dla nowej kolumny. Proces ten odbywa siê dla wszystkich sublist w `lista_domen`
+
+```{r}
+names(dane[,122:141])
+```
+
+
+
+Po stworzeniu nowych kolumn mo¿emy ju¿ usun¹æ niepotrzebne. Dodatkowo wykorzystamy opcje `gather`, która ma zadanie zmiany formy przedstawionych danych z wide na long, zgodnie z zasadami [tidy data](https://www.jstatsoft.org/article/view/v059i10). Dziêki tej operacji zmienne zamiast w kolumnach bêd¹ przedstawione w wierszach. Taki zabieg zdecydowanie u³atwia tworzenie modeli czy wizualizacji.
+
+```{r}
+dane <- dane %>% select(id, M1:prewencja) %>%
+                 gather(domena, wartosc, 5:22) %>%
+                 arrange(id, domena)
+```
+
+Jak widaæ po kilku zabiegach uzyskaliœmy porz¹dna formê danych. Z 121 kolumn zmniejszyliœmy ich liczbê do 8. Na koniec zmienimy nazwy kolumn, poniewa¿ M1, M2, M3 s¹ ma³o informacyjne. Dodatkowo w kolumnie M2, która informuje o p³ci respondenta, zamienimy zmienne numeryczne 1, 2 odpowiednio na mê¿czyzna i kobieta.
+
+```{r, echo=FALSE}
+head(dane)
+```
+
+```{r}
+plec <- ifelse(dane$M1 == 1, "Mezczyzna", "Kobieta") 
+dane$M1 <- as.factor(plec)
+levels(dane$M1) <- c("Mezczyzna", "Kobieta")
+colnames(dane) <- c("id", "plec", "wiek", "wyksztalcenie", "promocja", "prewencja", "domena", "wartosc")
+```
+
+```{r, echo=FALSE}
+head(dane, n = 10)
+```
+
+## Eskploracja
+```{r message=FALSE}
+library(ggplot2)
+library(RColorBrewer)
+library(ggthemes)
+```
+
+
+```{r}
+dane %>% 
+  filter(grepl("Czestosc", domena)) %>%
+  ggplot(aes(x = wartosc, fill = domena)) +
+  geom_density(alpha = 0.4) + 
+  theme_tufte() +
+  scale_fill_brewer("Domeny", palette = "Set1")+
+  ggtitle("Sk³onnoœc do ryzyka w zaleznoœci od domeny")
+
+```
+
+Przedstawimy tutaj kilka wykresów. Na pierwszym z nich doskonale widaæ, ¯e Polacy najwiêcej ryzyka podejmuj¹ w dziadzinach spo³ecznych a najmniej w domenie etycznej.
+
+```{r}
+dane %>%
+  filter(grepl("Czestosc", domena)) %>%
+  ggplot(aes(x = ceiling(wartosc), fill = plec)) +
+  geom_bar(position = "dodge") +
+  theme_tufte() +
+  facet_wrap(~ domena, ncol = 3) +
+  ggtitle("Sk³onnoœc do ryzyka w zaleznoœci od p³ci") +
+  xlab("wartoœæ") +
+  ylab("liczba")
+
+```
+
+W drugiej natomiast, ¯e Polki podejmuj¹ wiêcej ryzyka w sytuacjach spo³ecznych a Polacy w dziedzinie zdrowotnej.
+
+
+```{r}
+dane %>%
+  filter(grepl("Czestosc", domena)) %>%
+  ggplot(aes(x = wartosc, y = wiek, colour = wiek)) +
+  geom_point() +
+  geom_smooth(se=FALSE, col = "red") +
+  theme_tufte() +
+  facet_wrap(~ domena, ncol = 3) +
+  ggtitle("Sk³onnoœc do ryzyka w zaleznoœci od wieku")
+
+```
+
+W ostatnia grafika pokazuje sk³onnoœæ do ryzyka w ró¿nych domenach w zale¿noœci do wieku. Jak widaæ powy¿ej nie wystêpuje ¿adna zale¿noœæ. 
+
+## Regresja liniowa
+
+W analizie danych jedn¹ z najpopularniejszych metod modelowania jest regresja liniowa. W tej czêœci przeprowadzimy analizê w³aœnie t¹ metod¹ i skupimy siê jedynie na domenie spo³ecznej, dla oszczêdzenia czasu.
+
+
+```{r}
+dane %>% 
+  filter(grepl("spoleczna_Czestosc", domena)) %>%
+  lm(wartosc ~ promocja + prewencja + wiek + plec, data=.) %>%
+  summary()
+```
+
+Zmienna zale¿na w modelu jest sk³onnoœæ do ryzyka a zmiennymi niezale¿nymi ukierunkowanie promocyjne, prewencyjne, wiek oraz pleæ. Jak widaæ z powy¿szej analizy tylko ukierunkowanie promocyjne jest zmienn¹ istotn¹.
+
+```{r}
+dane %>%
+  filter(grepl("spoleczna_Czestosc", domena)) %>%
+  ggplot(aes(x = promocja, y = wartosc)) + 
+  geom_jitter(col = "deepskyblue4") +
+  geom_smooth(col = "red", size = 1, se=F, method = "lm") +
+  theme_tufte() +
+  ggtitle("Promocyjne ukierunkowanie a ryzyko")
+
+```
+
+```{r}
+dane %>%
+  filter(grepl("Czestosc", domena)) %>%
+  ggplot(aes(x = promocja, y = wartosc)) +
+  geom_jitter(col = "deepskyblue4") +
+  geom_smooth(se=FALSE, col = "red", method = "lm") +
+  theme_tufte() +
+  facet_wrap(~ domena, ncol = 3) +
+  ggtitle("Ryzyko w zale¿noœci od ukierunkownaia promocyjnego")
+```
+
+
+
+## Klasyfikacja za pomoc¹ drzewka decyzyjnego.
+
+Kolejn¹ metod¹ spotykan¹ w analizie danych jest klasyfikacja za pomoc¹ drzewka decyzyjnego. W porównaniu do regresji liniowej jest prostsza i praktyczniejsza w zastosowaniu. W celu przeprowadzenia analizy zmienna sk³onnoœæ do ryzyka zamieniono za zmienn¹ binarn¹ przyjmuj¹c¹ wartoœci, 0 gdy wartoœæ zmiennej ryzyko by³a mniejsza od mediany ryzyka. W przypadku przeciwnym przyjmowa³a wartoœæ 1. Analiza znów siê skupia³a na domenie spo³ecznej.
+
+```{r, echo=FALSE}
+dane %>% ## RÃ³znice
+  filter(grepl("spoleczna_Czestosc", domena)) %>%
+  select(wartosc) %>%
+  summary()
+
+mediana <- ifelse(dane$wartosc < 5.3, 0, 1)
+dane$binary_war <- mediana
+
+ryzyko_spol <- dane %>% ## RÃ³znice
+  filter(grepl("spoleczna_Czestosc", domena))
+```
+
+```{r, message=FALSE}
+library(rpart)
+library(randomForest)
+library(partykit)
+library(rattle)
+library(rpart.plot)
+```
+
+```{r}
+ryzyko_rpart <- rpart(binary_war ~ promocja + prewencja + wiek + plec,
+                      data = ryzyko_spol, method = "class")
+
+```
+
+```{r}
+fancyRpartPlot(ryzyko_rpart, palettes = c("Blues", "Oranges"))
+```
+
+Jak widaæ z analizy drzewka decyzyjnego, je¿eli poziom ukierunkowania promocyjnego jest ni¿szy ni¿ 3.2 to sk³onnoœæ do ryzyka w domenie spo³ecznej jest ni¿sza ni¿ wartoœæ mediany. W przypadku, gdy jest wiêksza ni¿ 4.3 to sk³onnoœæ do ryzyka jest wiêksza od mediany. Jeœli jest pomiêdzy 3.2 A 4.3 to w grê wchodzi poziom ukierunkowania prewencyjnego. Je¿eli poziom tego ukierunkowania jest mniejszy ni¿ 3.4 To sk³onnoœæ do ryzyka jest ma³a, gdy wiêksza sk³onnoœæ ta jest wysoka.
+
+
+## Podsumowanie
+
+W powy¿szym przypadku zosta³o umówionych wiele zagadnieñ czêsto spotykanych w data science. Miedzy innymi czyszczenie danych, eksploracja danych, wizualizacja, tworzenie modeli regresji liniowej oraz drzewka decyzyjnego. Ka¿dy z tych etapów jest nieodzownym elementem pracy w analizie danych.  Wydaje siê jednak, ¿e najwa¿niejszym etapem jest etap przygotowywania danych. Proces ten jest najbardziej czasoch³onny i czêsto frustruj¹cy, ale je¿eli przeprowadzony starannie to proces eksploracji danych  staje siê stosunkowo ³atwy, a czêsto nawet interesuj¹cy i  przyjemny. 
+
+
