@@ -10,9 +10,7 @@ output:
 
 \newpage
 
-# Wstêp
-
-Projekt_Samsung to plik przygotowany dla `Samsung Electronics`. Zawarte s¹ w nim przyk³ady technik stosowanych w `Data Science` w szczególnoœci w analizie danych tekstowych. W niniejszym dokumencie zastosowano m.in. techniki:
+W pliku s¹ zawarte s¹  przyk³ady technik stosowanych w `Data Science` w szczególnoœci w analizie danych tekstowych. W niniejszym dokumencie zastosowano m.in. techniki:
 
 * zdobywania, obróbki i analizy tekstu pochodz¹cych ze stron html
 
